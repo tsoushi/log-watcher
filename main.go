@@ -40,6 +40,8 @@ func main() {
 	switch *sendTarget {
 	case "discord":
 		handler = client.SendToDiscordWebhookHandler(*discordWebhookURL)
+	default:
+		panic("Invalid send target")
 	}
 
 	err = watchFile(file, *regexString, *outputFormat, handler)
@@ -63,9 +65,12 @@ func watchFile(file *os.File, regexString string, outputFormat string, handler f
 			return xerrors.Errorf("failed to extract text: %w", err)
 		}
 
-		err = handler(strings.Join(outputs, "\n"))
-		if err != nil {
-			fmt.Printf("Error handling: %+v", err)
+		output := strings.Join(outputs, "\n")
+		if output != "" {
+			err = handler(output)
+			if err != nil {
+				fmt.Printf("Error handdling output: %+v", err)
+			}
 		}
 
 		file.Seek(0, 2)
