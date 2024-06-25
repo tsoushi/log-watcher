@@ -14,11 +14,12 @@ import (
 )
 
 var (
-	filePath          = flag.String("file", "", "File path")
-	regexString       = flag.String("match", "", "Match string")
-	outputFormat      = flag.String("outputFormat", "", "Output format")
-	sendTarget        = flag.String("sendTarget", "discord", "Send target")
-	discordWebhookURL = flag.String("discordWebhookURL", "", "Discord webhook URL")
+	filePath           = flag.String("file", "", "File path")
+	regexString        = flag.String("match", "", "Match string")
+	outputFormat       = flag.String("outputFormat", "", "Output format")
+	sendTarget         = flag.String("sendTarget", "discord", "Send target")
+	discordWebhookURL  = flag.String("discordWebhookURL", "", "Discord webhook URL")
+	intervalTimeString = flag.String("intervalTime", "1s", "Interval time")
 )
 
 func main() {
@@ -44,15 +45,20 @@ func main() {
 		panic("Invalid send target")
 	}
 
-	err = watchFile(file, *regexString, *outputFormat, handler)
+	intervalTime, err := time.ParseDuration(*intervalTimeString)
+	if err != nil {
+		panic(err)
+	}
+
+	err = watchFile(file, *regexString, *outputFormat, handler, intervalTime)
 	if err != nil {
 		fmt.Printf("Error watching file: %+v", err)
 	}
 }
 
-func watchFile(file *os.File, regexString string, outputFormat string, handler func(string) error) error {
+func watchFile(file *os.File, regexString string, outputFormat string, handler func(string) error, intervalTime time.Duration) error {
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(intervalTime)
 
 		bytes, err := io.ReadAll(file)
 		if err != nil {
@@ -63,6 +69,10 @@ func watchFile(file *os.File, regexString string, outputFormat string, handler f
 		outputs, err := extractor.ExtractAndReplaceText(text, regexString, outputFormat)
 		if err != nil {
 			return xerrors.Errorf("failed to extract text: %w", err)
+		}
+
+		if len(outputs) != 0 {
+			fmt.Printf("%d hits\n", len(outputs))
 		}
 
 		output := strings.Join(outputs, "\n")
